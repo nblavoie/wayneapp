@@ -16,7 +16,9 @@ Rust + Win32 natif (GDI/GDI+), sans framework ni WebView : un seul exécutable d
 |---|---|
 | Alt+Espace | Afficher / masquer |
 | ↑ ↓ | Sélection |
-| Entrée | Lancer |
+| Entrée | Lancer, ou ramener au premier plan si l'app ou le dossier est déjà ouvert |
+| Maj+Entrée | Forcer une nouvelle instance |
+| Ctrl+Suppr (ou clic droit) | Masquer l'élément sélectionné (réafficher : clic droit sur l'icône W › Applications masquées) |
 | Ctrl+Entrée | Afficher dans l'Explorateur |
 | Ctrl+1…6 | Lancer la ligne N |
 | Tab | Compléter avec le nom sélectionné |
@@ -24,7 +26,9 @@ Rust + Win32 natif (GDI/GDI+), sans framework ni WebView : un seul exécutable d
 
 ## Zone de notification
 
-L'icône **W** de la zone de notification : clic gauche pour ouvrir ou fermer Wayne, clic droit pour le menu (Ouvrir, Lancer au démarrage de Windows, Quitter). Windows 11 range les nouvelles icônes dans le menu caché (^) : glisse-la dans la barre pour la garder visible.
+L'icône **W** de la zone de notification : clic gauche pour ouvrir ou fermer Wayne, clic droit pour le menu (Ouvrir, Statistiques, Lancer au démarrage de Windows, Quitter).
+
+**Statistiques** (menu de l'icône, ou tape « stats » dans Wayne) : lancements au total, aujourd'hui, moyenne par jour, apps les plus lancées, activité par heure, par jour de la semaine et sur 30 jours, derniers lancements, et ce que Wayne a appris (« c » → Outil Capture d'écran). Survole une barre pour voir sa valeur. Windows 11 range les nouvelles icônes dans le menu caché (^) : glisse-la dans la barre pour la garder visible.
 
 ## Installateur
 
@@ -53,5 +57,7 @@ cargo build --release
 L'exécutable est `target\release\wayne.exe`. `--hidden` démarre sans afficher la fenêtre (utilisé par le démarrage automatique).
 
 ## Licence
+
+Copyright © 2026 Kortexs.
 
 Wayne est un logiciel libre, distribué sous licence [GNU GPL v3.0 ou ultérieure](LICENSE). Code source : https://github.com/nblavoie/wayneapp

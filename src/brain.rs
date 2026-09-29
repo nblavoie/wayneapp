@@ -2,9 +2,9 @@
 //!
 //! Chaque lancement est enregistré (heure, jour, requête tapée, élément choisi).
 //! On en tire, avec une décroissance exponentielle (demi-vie de 30 jours) :
-//!   * P(app)              — fréquence récente (« frécence ») ;
-//!   * P(app | requête)    — ce que tu choisis habituellement après avoir tapé « p », « pi »… ;
-//!   * P(heure | app), P(semaine/fin de semaine | app) — habitudes horaires (Bayes naïf lissé).
+//!   * P(app) : fréquence récente (« frécence ») ;
+//!   * P(app | requête) : ce que tu choisis habituellement après avoir tapé « p », « pi »… ;
+//!   * P(heure | app), P(semaine/fin de semaine | app) : habitudes horaires (Bayes naïf lissé).
 //! Requête vide → prédiction bayésienne P(app | heure, jour) ; requête non vide → ces
 //! probabilités viennent booster le score de correspondance texte.
 
@@ -41,7 +41,7 @@ pub fn now_secs() -> u64 {
     SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0)
 }
 
-/// (heure locale 0–23, 1 si fin de semaine)
+/// (heure locale de 0 à 23, 1 si fin de semaine)
 pub fn local_context() -> (usize, usize) {
     let t = unsafe { windows::Win32::System::SystemInformation::GetLocalTime() };
     let weekend = (t.wDayOfWeek == 0 || t.wDayOfWeek == 6) as usize;
@@ -80,6 +80,11 @@ impl Brain {
             s.push_str(&format!("{}\t{}\t{}\t{}\t{}\n", e.ts, e.hour, e.weekend, e.key, e.query));
         }
         let _ = fs::write(&self.path, s);
+    }
+
+    /// Historique brut (horodatage, élément, requête tapée), du plus ancien au plus récent.
+    pub fn history(&self) -> impl Iterator<Item = (u64, &str, &str)> {
+        self.events.iter().map(|e| (e.ts, e.key.as_str(), e.query.as_str()))
     }
 
     /// Enregistre un lancement et réentraîne le modèle (quelques millisecondes).

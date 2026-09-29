@@ -51,7 +51,7 @@ pub fn words(name: &str) -> Vec<String> {
     out
 }
 
-/// Score de correspondance (0–100) d'une requête déjà normalisée, ou None.
+/// Score de correspondance (de 0 à 100) d'une requête déjà normalisée, ou None.
 pub fn score(q: &str, it: &Item) -> Option<f32> {
     if it.aliases.iter().any(|a| a == q) {
         return Some(100.0);

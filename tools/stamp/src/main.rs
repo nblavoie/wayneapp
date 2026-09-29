@@ -1,7 +1,7 @@
 //! stamp <exe> <ico> <version> <description> <nom-de-fichier-original>
 //!
 //! Insère dans un exécutable déjà compilé l'icône (RT_ICON + RT_GROUP_ICON) et le bloc
-//! VERSIONINFO, via l'API Windows UpdateResource — aucun compilateur de ressources requis.
+//! VERSIONINFO, via l'API Windows UpdateResource : aucun compilateur de ressources requis.
 
 use windows::core::{HSTRING, PCWSTR};
 use windows::Win32::System::LibraryLoader::{BeginUpdateResourceW, EndUpdateResourceW, UpdateResourceW};

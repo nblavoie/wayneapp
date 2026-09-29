@@ -15,6 +15,12 @@
 <meta property="og:image" content="{{SITE_URL}}/og.png">
 <meta property="og:url" content="{{SITE_URL}}/">
 <meta name="twitter:card" content="summary_large_image">
+<!-- Privacy-friendly analytics by Plausible -->
+<script async src="https://stats.kortexs.com/js/pa-hjlHauk10bbonECOHU92N.js"></script>
+<script>
+  window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};
+  plausible.init()
+</script>
 <style>
 :root {
   --bg: #111213;
@@ -192,6 +198,51 @@ input[type=range]::-moz-range-thumb { width: 16px; height: 16px; border-radius: 
 .step p { margin: 3px 0 0; color: var(--muted); }
 .step p b { color: var(--text); font-weight: 600; }
 
+/* Fenêtre de statistiques (reproduction) */
+.sw { margin-top: 44px; border-radius: 14px; overflow: hidden; border: 1px solid #3a3a3a; background: #1c1c1c;
+  box-shadow: 0 40px 100px -30px rgba(0,0,0,.8); font-family: "Segoe UI", system-ui, sans-serif; }
+.sw-bar { display: flex; align-items: center; justify-content: space-between; height: 38px; padding: 0 0 0 14px; background: #202020; font-size: 12.5px; color: #d8d8d8; }
+.sw-bar .tt { display: flex; align-items: center; gap: 9px; }
+.sw-bar .tt i { width: 16px; height: 16px; border-radius: 4px; background: var(--accent); font: 800 9px/16px var(--font); font-style: normal; text-align: center; color: #fff; }
+.sw-ctl { display: flex; height: 100%; }
+.sw-ctl span { width: 46px; display: grid; place-items: center; color: #bdbdbd; font-size: 13px; }
+.sw-body { padding: 22px; }
+.sw-h { font: 700 24px/1.1 var(--font); margin: 0 0 4px; color: #f2f2f2; }
+.sw-sub { font-size: 13px; color: #a3a3a3; margin: 0 0 18px; }
+.sw-tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.sw-tile, .sw-card { background: #262626; border: 1px solid #333; border-radius: 11px; }
+.sw-tile { padding: 12px 14px; }
+.sw-tile b { display: block; font: 600 26px/1.15 var(--font); color: #f2f2f2; }
+.sw-tile span { font-size: 12px; color: #a3a3a3; }
+.sw-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+.sw-card { padding: 12px 14px 12px; min-width: 0; }
+.sw-ch { display: flex; justify-content: space-between; gap: 10px; font-size: 13.5px; font-weight: 600; color: #f2f2f2; margin-bottom: 10px; }
+.sw-ch small { font-weight: 400; font-size: 12px; color: #a3a3a3; text-align: right; }
+.sw-top { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.sw-top li { display: grid; grid-template-columns: 20px minmax(0, 132px) 1fr 26px; align-items: center; gap: 10px; font-size: 13px; color: #f2f2f2; }
+.sw-top .ic { width: 20px; height: 20px; border-radius: 5px; display: grid; place-items: center; font-size: 10px; font-weight: 700; color: #fff; }
+.sw-top .nm { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sw-top .tr { height: 8px; border-radius: 4px; background: #313334; overflow: hidden; }
+.sw-top .tr i { display: block; height: 100%; background: #4fa9b3; border-radius: 0 4px 4px 0; }
+.sw-top .ct { text-align: right; color: #a3a3a3; }
+.sw-cols { display: flex; align-items: flex-end; gap: 2px; height: 74px; border-bottom: 1px solid #3a3a3a; }
+.sw-cols i { position: relative; flex: 1; background: #4fa9b3; border-radius: 3px 3px 0 0; min-height: 2px; cursor: default; }
+.sw-cols i:hover { background: #9adce3; }
+.sw-cols i:hover::after { content: attr(data-v); position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); white-space: nowrap;
+  background: #0f1011; border: 1px solid #3a3a3a; color: #f2f2f2; font-size: 11.5px; padding: 3px 8px; border-radius: 6px; z-index: 2; pointer-events: none; }
+.sw-cols.wd { gap: 0; } .sw-cols.wd i { flex: none; width: 24px; margin: 0 auto; }
+.sw-lab { display: flex; justify-content: space-between; font-size: 11px; color: #787878; margin-top: 5px; }
+.sw-lab.wd span { flex: 1; text-align: center; }
+.sw-learn { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 22px; font-size: 13px; color: #f2f2f2; }
+.sw-learn div { display: flex; align-items: center; gap: 9px; white-space: nowrap; overflow: hidden; }
+.sw-learn q { quotes: "« " " »"; background: #36393b; border-radius: 6px; padding: 2px 8px; }
+.sw-learn small { color: #a3a3a3; }
+.sw-full { grid-column: 1 / -1; }
+@media (max-width: 760px) {
+  .sw-tiles { grid-template-columns: 1fr 1fr; } .sw-grid, .sw-learn { grid-template-columns: 1fr; }
+  .sw-body { padding: 14px; } .sw-ctl span { width: 36px; }
+}
+
 /* Lettres-dossiers */
 .letters { display: grid; gap: 12px; grid-template-columns: repeat(2, 1fr); }
 @media (min-width: 560px) { .letters { grid-template-columns: repeat(4, 1fr); } }
@@ -331,6 +382,60 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 16px; justify-content: space
       </div>
     </section>
 
+    <section id="stats">
+      <div class="split" style="align-items:end">
+        <div class="reveal">
+          <div class="kicker">Statistiques</div>
+          <h2>Tes habitudes, en chiffres.</h2>
+          <p class="sub">Clic droit sur l'icône W, puis « Statistiques ». Ce que tu lances, à quelle heure, quels jours, et ce que Wayne a retenu de tes choix. Calculé sur ton PC, rien n'est envoyé.</p>
+        </div>
+        <p class="note-s reveal" style="margin:0">Données d'exemple. Survole les barres pour voir les valeurs.</p>
+      </div>
+      <div class="sw reveal" aria-label="Aperçu de la fenêtre Statistiques de Wayne">
+        <div class="sw-bar"><div class="tt"><i>W</i>Statistiques · Wayne</div><div class="sw-ctl" aria-hidden="true"><span><svg width="10" height="10" viewBox="0 0 10 10"><path d="M0 5.5h10" stroke="currentColor"/></svg></span><span><svg width="10" height="10" viewBox="0 0 10 10"><rect x=".5" y=".5" width="9" height="9" fill="none" stroke="currentColor"/></svg></span><span><svg width="10" height="10" viewBox="0 0 10 10"><path d="M0 0l10 10M10 0L0 10" stroke="currentColor"/></svg></span></div></div>
+        <div class="sw-body">
+          <p class="sw-h">Statistiques</p>
+          <p class="sw-sub">Depuis le 2 sept. 2026 · calculées sur ton PC, rien n'est envoyé</p>
+          <div class="sw-tiles">
+            <div class="sw-tile"><b>1&#x202F;284</b><span>lancements au total</span></div>
+            <div class="sw-tile"><b>38</b><span>aujourd'hui</span></div>
+            <div class="sw-tile"><b>47,6</b><span>par jour en moyenne (30 j)</span></div>
+            <div class="sw-tile"><b>29</b><span>apps et dossiers différents</span></div>
+          </div>
+          <div class="sw-grid">
+            <div class="sw-card">
+              <div class="sw-ch">Les plus lancées</div>
+              <ul class="sw-top">
+                <li><span class="ic" style="background:#2f7fd9">T</span><span class="nm">Terminal</span><span class="tr"><i style="width:100%"></i></span><span class="ct">212</span></li>
+                <li><span class="ic" style="background:#e8b53a">E</span><span class="nm">Explorateur de fichiers</span><span class="tr"><i style="width:84%"></i></span><span class="ct">178</span></li>
+                <li><span class="ic" style="background:#c2415b">O</span><span class="nm">Outil Capture d'écran</span><span class="tr"><i style="width:66%"></i></span><span class="ct">141</span></li>
+                <li><span class="ic" style="background:#2fa36b">T</span><span class="nm">Téléchargements</span><span class="tr"><i style="width:52%"></i></span><span class="ct">110</span></li>
+                <li><span class="ic" style="background:#4b5563">C</span><span class="nm">Calculatrice</span><span class="tr"><i style="width:37%"></i></span><span class="ct">79</span></li>
+                <li><span class="ic" style="background:#3a86c8">B</span><span class="nm">Bloc-notes</span><span class="tr"><i style="width:28%"></i></span><span class="ct">60</span></li>
+              </ul>
+            </div>
+            <div class="sw-card">
+              <div class="sw-ch">Par heure <small>pic vers 10 h</small></div>
+              <div class="sw-cols" id="swHours"></div>
+              <div class="sw-lab"><span>0 h</span><span>6 h</span><span>12 h</span><span>18 h</span><span>23 h</span></div>
+              <div class="sw-ch" style="margin:16px 0 10px">Par jour de la semaine <small>plus actif le mardi</small></div>
+              <div class="sw-cols wd" id="swDays"></div>
+              <div class="sw-lab wd"><span>lun</span><span>mar</span><span>mer</span><span>jeu</span><span>ven</span><span>sam</span><span>dim</span></div>
+            </div>
+            <div class="sw-card sw-full">
+              <div class="sw-ch">Ce que Wayne a appris <small>ce que tu tapes → ce que tu choisis le plus</small></div>
+              <div class="sw-learn">
+                <div><q>c</q>→ Outil Capture d'écran <small>· 64 fois</small></div>
+                <div><q>t</q>→ Terminal <small>· 51 fois</small></div>
+                <div><q>d</q>→ Téléchargements <small>· 43 fois</small></div>
+                <div><q>calc</q>→ Calculatrice <small>· 22 fois</small></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <section id="dossiers">
       <div class="split">
         <div class="reveal">
@@ -390,10 +495,12 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 16px; justify-content: space
         <table class="shortcuts reveal">
           <tr><td><kbd>Alt</kbd> + <kbd>Espace</kbd></td><td>Ouvrir ou fermer Wayne</td></tr>
           <tr><td><kbd>↑</kbd> <kbd>↓</kbd></td><td>Choisir un résultat</td></tr>
-          <tr><td><kbd>Entrée</kbd></td><td>Lancer</td></tr>
+          <tr><td><kbd>Entrée</kbd></td><td>Lancer, ou ramener l'app au premier plan si elle est déjà ouverte</td></tr>
+          <tr><td><kbd>Maj</kbd> + <kbd>Entrée</kbd></td><td>Ouvrir une nouvelle instance</td></tr>
           <tr><td><kbd>Ctrl</kbd> + <kbd>1</kbd> … <kbd>6</kbd></td><td>Lancer directement la ligne 1 à 6</td></tr>
           <tr><td><kbd>Ctrl</kbd> + <kbd>Entrée</kbd></td><td>Afficher le programme dans l'Explorateur</td></tr>
           <tr><td><kbd>Tab</kbd></td><td>Compléter le nom</td></tr>
+          <tr><td><kbd>Ctrl</kbd> + <kbd>Suppr</kbd></td><td>Masquer l'app sélectionnée (ou clic droit)</td></tr>
           <tr><td><kbd>Échap</kbd></td><td>Fermer</td></tr>
         </table>
       </div>
@@ -430,6 +537,10 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 16px; justify-content: space
       <details>
         <summary><span><kbd>Alt</kbd>+<kbd>Espace</kbd> est déjà pris sur mon PC.</span></summary>
         <p>Si une autre application l'utilise déjà (PowerToys Run, par exemple), Wayne te prévient. Tu peux toujours l'ouvrir en cliquant sur l'icône W dans la zone de notification.</p>
+      </details>
+      <details>
+        <summary>Une app que je n'utilise jamais sort toujours en premier.</summary>
+        <p>Masque-la : sélectionne-la et appuie sur <kbd>Ctrl</kbd>+<kbd>Suppr</kbd>, ou fais un clic droit dessus puis « Masquer ». Elle disparaît des résultats et des suggestions. Pour la retrouver : clic droit sur l'icône W › Applications masquées.</p>
       </details>
       <details>
         <summary>Comment le démarrer avec Windows, ou l'enlever ?</summary>
@@ -640,6 +751,18 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 16px; justify-content: space
     var started = false;
     new IntersectionObserver(function (es) { if (es[0].isIntersecting && !started) { started = true; timer = setTimeout(run, 400); } }, { threshold: .35 }).observe(stage);
   } else { run(); }
+
+  // ---------- Fenêtre de statistiques (données d'exemple) ----------
+  function fillCols(id, values, label) {
+    var el = document.getElementById(id); if (!el) return;
+    var max = Math.max.apply(null, values);
+    el.innerHTML = values.map(function (v, i) {
+      return '<i style="height:' + Math.max(2, Math.round(v / max * 100)) + '%" data-v="' + label(i) + " · " + v + " lancement" + (v > 1 ? "s" : "") + '"></i>';
+    }).join("");
+  }
+  var DAY_NAMES = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"];
+  fillCols("swHours", [2, 0, 0, 0, 0, 1, 6, 31, 88, 124, 139, 112, 61, 97, 118, 109, 96, 71, 38, 44, 52, 41, 17, 6], function (i) { return i + " h"; });
+  fillCols("swDays", [231, 262, 244, 238, 197, 58, 54], function (i) { return DAY_NAMES[i]; });
 
   // ---------- Prédiction selon l'heure (exemple illustratif) ----------
   var PROFILE = [

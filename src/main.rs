@@ -1,19 +1,21 @@
 #![windows_subsystem = "windows"]
-//! Wayne — lanceur façon Alfred pour Windows. Alt+Espace.
+//! Wayne : lanceur façon Alfred pour Windows. Alt+Espace.
 
 mod brain;
+mod focus;
 mod icons;
 mod index;
 mod log;
 mod matcher;
+mod stats;
 
 use std::cell::{Cell, RefCell};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::ffi::c_void;
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::time::{Duration, Instant};
 
-use windows::core::{w, PCWSTR};
+use windows::core::{w, HSTRING, PCWSTR};
 use windows::Win32::Foundation::*;
 use windows::Win32::Graphics::Dwm::*;
 use windows::Win32::Graphics::Gdi::*;
@@ -41,6 +43,9 @@ const TRAY_ID: u32 = 1;
 const MENU_OPEN: usize = 1;
 const MENU_AUTOSTART: usize = 2;
 const MENU_QUIT: usize = 3;
+const MENU_STATS: usize = 4;
+const MENU_UNHIDE_ALL: usize = 50;
+const MENU_UNHIDE_BASE: usize = 100;
 const HOTKEY_ID: i32 = 1;
 const CARET_TIMER: usize = 1;
 const MAX_ROWS: usize = 6;
@@ -113,7 +118,16 @@ impl Fonts {
 enum Act {
     None,
     Hide,
-    Launch(Item, bool),
+    Launch(Item, Mode),
+}
+
+/// Entrée : ramène l'app si elle est déjà ouverte. Maj+Entrée : nouvelle instance.
+/// Ctrl+Entrée : afficher le programme dans l'Explorateur.
+#[derive(Clone, Copy, PartialEq)]
+enum Mode {
+    Open,
+    New,
+    Reveal,
 }
 
 struct App {
@@ -124,6 +138,8 @@ struct App {
     query: String,
     sel: usize,
     brain: Brain,
+    /// Éléments que l'utilisateur a masqués (Ctrl+Suppr ou clic droit).
+    hidden: HashSet<String>,
     icons: HashMap<String, Option<Icon>>,
     icon_tx: Sender<icons::Request>,
     icon_rx: Receiver<icons::Reply>,
@@ -194,10 +210,15 @@ impl App {
         self.results.clear();
         self.sel = 0;
         if q.is_empty() {
-            // Requête vide : prédiction du modèle.
-            for key in self.brain.predictions(MAX_ROWS) {
+            // Requête vide : prédiction du modèle (on en demande davantage pour compenser les masqués).
+            for key in self.brain.predictions(MAX_ROWS + self.hidden.len()) {
+                if self.results.len() == MAX_ROWS {
+                    break;
+                }
                 if let Some(&i) = self.by_key.get(&key) {
-                    self.results.push(self.items[i].clone());
+                    if !self.hidden.contains(&key) {
+                        self.results.push(self.items[i].clone());
+                    }
                 }
             }
         } else {
@@ -206,6 +227,7 @@ impl App {
                 .items
                 .iter()
                 .enumerate()
+                .filter(|(_, it)| !self.hidden.contains(&it.key))
                 .filter_map(|(i, it)| matcher::score(&q, it).map(|s| (s + self.brain.boost(&q, &it.key, hour, weekend), i)))
                 .collect();
             scored.sort_by(|a, b| b.0.total_cmp(&a.0).then_with(|| self.items[a.1].name.len().cmp(&self.items[b.1].name.len())));
@@ -258,28 +280,37 @@ impl App {
         }
     }
 
-    fn launch(&mut self, idx: usize, reveal: bool) -> Act {
+    fn launch(&mut self, idx: usize, mode: Mode) -> Act {
         let Some(item) = self.results.get(idx).cloned() else { return Act::None };
         let q = self.folded_query();
         self.brain.record(&item.key, &q);
-        Act::Launch(item, reveal)
+        Act::Launch(item, mode)
     }
 
     unsafe fn key_down(&mut self, vk: u32) -> Act {
         let ctrl = GetKeyState(VK_CONTROL.0 as i32) < 0;
+        let shift = GetKeyState(VK_SHIFT.0 as i32) < 0;
         let n = self.results.len();
         match VIRTUAL_KEY(vk as u16) {
             VK_ESCAPE => return Act::Hide,
             VK_DOWN if n > 0 => self.sel = (self.sel + 1) % n,
             VK_UP if n > 0 => self.sel = (self.sel + n - 1) % n,
-            VK_RETURN => return self.launch(self.sel, ctrl),
+            VK_RETURN => {
+                let mode = if ctrl { Mode::Reveal } else if shift { Mode::New } else { Mode::Open };
+                return self.launch(self.sel, mode);
+            }
+            VK_DELETE if ctrl => {
+                if let Some(key) = self.results.get(self.sel).map(|it| it.key.clone()) {
+                    self.hide_key(&key);
+                }
+            }
             VK_TAB => {
                 if let Some(it) = self.results.get(self.sel) {
                     self.query = it.name.clone();
                     self.refresh();
                 }
             }
-            k if ctrl && (0x31..=0x39).contains(&k.0) => return self.launch((k.0 - 0x31) as usize, false),
+            k if ctrl && (0x31..=0x39).contains(&k.0) => return self.launch((k.0 - 0x31) as usize, Mode::Open),
             _ => return Act::None,
         }
         let _ = InvalidateRect(self.hwnd, None, false);
@@ -315,16 +346,46 @@ impl App {
     }
 
     fn click(&mut self, x: i32, y: i32) -> Act {
+        match self.row_at(x, y) {
+            Some(idx) => {
+                self.sel = idx;
+                self.launch(idx, Mode::Open)
+            }
+            None => Act::None,
+        }
+    }
+
+    fn row_at(&self, x: i32, y: i32) -> Option<usize> {
         let top = self.px(PAD + INPUT_H + GAP);
         if y < top || x < self.px(PAD) || x > self.px(WIDTH - PAD) {
-            return Act::None;
+            return None;
         }
         let idx = ((y - top) / self.px(ROW_H)) as usize;
-        if idx < self.results.len() {
-            self.sel = idx;
-            return self.launch(idx, false);
+        (idx < self.results.len()).then_some(idx)
+    }
+
+    /// Masque un élément : il n'apparaîtra plus dans les résultats ni les suggestions.
+    fn hide_key(&mut self, key: &str) {
+        if key.starts_with("cmd:") {
+            return;
         }
-        Act::None
+        self.hidden.insert(key.to_string());
+        index::save_hidden(&self.hidden);
+        log::log(&format!("masqué : {key}"));
+        self.refresh();
+    }
+
+    fn unhide(&mut self, key: Option<&str>) {
+        match key {
+            Some(k) => {
+                self.hidden.remove(k);
+            }
+            None => self.hidden.clear(),
+        }
+        index::save_hidden(&self.hidden);
+        if self.visible {
+            self.refresh();
+        }
     }
 
     unsafe fn paint(&mut self, hdc: HDC) {
@@ -442,6 +503,10 @@ fn placeholder_color(key: &str) -> (u8, u8, u8) {
 }
 
 unsafe fn text(hdc: HDC, s: &str, f: HFONT, color: (u8, u8, u8), mut r: RECT, fmt: DRAW_TEXT_FORMAT) {
+    // Un tableau vide a un pointeur invalide que DrawTextW lit quand même : plantage dans user32.
+    if s.is_empty() {
+        return;
+    }
     SelectObject(hdc, HGDIOBJ(f.0));
     SetTextColor(hdc, cref(color));
     let mut w: Vec<u16> = s.encode_utf16().collect();
@@ -483,6 +548,35 @@ impl Gfx {
         GdipAddPathArc(path, x + w - d, y, d, d, 270.0, 90.0);
         GdipAddPathArc(path, x + w - d, y + h - d, d, d, 0.0, 90.0);
         GdipAddPathArc(path, x, y + h - d, d, d, 90.0, 90.0);
+        GdipClosePathFigure(path);
+        let mut brush = std::ptr::null_mut();
+        GdipCreateSolidFill(color, &mut brush);
+        GdipFillPath(self.0, brush as *mut GpBrush, path);
+        GdipDeleteBrush(brush as *mut GpBrush);
+        GdipDeletePath(path);
+    }
+
+    /// Barre de graphique : bout arrondi du côté de la valeur, base carrée sur l'axe.
+    /// `vertical` : arrondi en haut ; sinon arrondi à droite.
+    unsafe fn bar(&self, x: f32, y: f32, w: f32, h: f32, r: f32, color: u32, vertical: bool) {
+        if w <= 0.0 || h <= 0.0 {
+            return;
+        }
+        let r = r.min(w / 2.0).min(h / 2.0);
+        let d = 2.0 * r;
+        let mut path = std::ptr::null_mut();
+        GdipCreatePath(FillModeAlternate, &mut path);
+        if vertical {
+            GdipAddPathLine(path, x, y + h, x, y + r);
+            GdipAddPathArc(path, x, y, d, d, 180.0, 90.0);
+            GdipAddPathArc(path, x + w - d, y, d, d, 270.0, 90.0);
+            GdipAddPathLine(path, x + w, y + r, x + w, y + h);
+        } else {
+            GdipAddPathLine(path, x, y, x + w - r, y);
+            GdipAddPathArc(path, x + w - d, y, d, d, 270.0, 90.0);
+            GdipAddPathArc(path, x + w - d, y + h - d, d, d, 0.0, 90.0);
+            GdipAddPathLine(path, x + w - r, y + h, x, y + h);
+        }
         GdipClosePathFigure(path);
         let mut brush = std::ptr::null_mut();
         GdipCreateSolidFill(color, &mut brush);
@@ -591,6 +685,34 @@ unsafe fn tray_menu(hwnd: HWND) {
     let std::result::Result::Ok(menu) = CreatePopupMenu() else { return };
     let checked = if index::autostart_enabled() { MF_CHECKED } else { MF_UNCHECKED };
     let _ = AppendMenuW(menu, MF_STRING, MENU_OPEN, w!("Ouvrir Wayne\tAlt+Espace"));
+    let _ = AppendMenuW(menu, MF_STRING, MENU_STATS, w!("Statistiques…"));
+
+    // Sous-menu des éléments masqués : un clic réaffiche l'élément.
+    let hidden: Vec<(String, String)> = with_app(|a| {
+        let mut v: Vec<(String, String)> = a
+            .hidden
+            .iter()
+            .map(|k| {
+                let name = a.by_key.get(k).map(|&i| a.items[i].name.clone()).unwrap_or_else(|| k.split_once(':').map(|(_, r)| r).unwrap_or(k).to_string());
+                (k.clone(), name)
+            })
+            .collect();
+        v.sort_by(|x, y| x.1.to_lowercase().cmp(&y.1.to_lowercase()));
+        v
+    })
+    .unwrap_or_default();
+    if let std::result::Result::Ok(sub) = CreatePopupMenu() {
+        if hidden.is_empty() {
+            let _ = AppendMenuW(sub, MF_STRING | MF_GRAYED, 0, w!("Aucune (Ctrl+Suppr ou clic droit dans Wayne pour masquer)"));
+        } else {
+            for (i, (_, name)) in hidden.iter().enumerate() {
+                let _ = AppendMenuW(sub, MF_STRING, MENU_UNHIDE_BASE + i, &HSTRING::from(format!("Réafficher « {name} »")));
+            }
+            let _ = AppendMenuW(sub, MF_SEPARATOR, 0, PCWSTR::null());
+            let _ = AppendMenuW(sub, MF_STRING, MENU_UNHIDE_ALL, w!("Tout réafficher"));
+        }
+        let _ = AppendMenuW(menu, MF_POPUP, sub.0 as usize, w!("Applications masquées"));
+    }
     let _ = AppendMenuW(menu, MF_SEPARATOR, 0, PCWSTR::null());
     let _ = AppendMenuW(menu, MF_STRING | checked, MENU_AUTOSTART, w!("Lancer au démarrage de Windows"));
     let _ = AppendMenuW(menu, MF_SEPARATOR, 0, PCWSTR::null());
@@ -604,23 +726,56 @@ unsafe fn tray_menu(hwnd: HWND) {
     let _ = DestroyMenu(menu);
     match cmd.0 as usize {
         MENU_OPEN => show(hwnd),
+        MENU_STATS => stats::open(),
         MENU_AUTOSTART => toggle_autostart(),
         MENU_QUIT => {
             let _ = DestroyWindow(hwnd);
         }
+        MENU_UNHIDE_ALL => {
+            with_app(|a| a.unhide(None));
+        }
+        c if c >= MENU_UNHIDE_BASE && c - MENU_UNHIDE_BASE < hidden.len() => {
+            let key = hidden[c - MENU_UNHIDE_BASE].0.clone();
+            with_app(|a| a.unhide(Some(&key)));
+        }
         _ => {}
     }
+}
+
+/// Clic droit sur un résultat : menu « Masquer ».
+unsafe fn row_menu(hwnd: HWND, key: String, name: String) {
+    let std::result::Result::Ok(menu) = CreatePopupMenu() else { return };
+    let flags = if key.starts_with("cmd:") { MF_STRING | MF_GRAYED } else { MF_STRING };
+    let _ = AppendMenuW(menu, flags, 1, &HSTRING::from(format!("Masquer « {name} »\tCtrl+Suppr")));
+    let mut pt = POINT::default();
+    let _ = GetCursorPos(&mut pt);
+    let cmd = TrackPopupMenu(menu, TPM_RETURNCMD | TPM_RIGHTBUTTON, pt.x, pt.y, 0, hwnd, None);
+    let _ = DestroyMenu(menu);
+    if cmd.0 == 1 {
+        with_app(|a| a.hide_key(&key));
+    }
+    let _ = SetFocus(hwnd);
 }
 
 unsafe fn perform(hwnd: HWND, act: Act) {
     match act {
         Act::None => {}
         Act::Hide => hide(hwnd),
-        Act::Launch(item, reveal) => {
+        Act::Launch(item, mode) => {
             hide(hwnd);
-            match item.action {
+            // Le lancement vient d'être enregistré : la fenêtre de statistiques suit.
+            stats::refresh_if_open();
+            match &item.action {
                 Action::Open(target) => {
-                    if let (true, Some(p)) = (reveal, &item.path) {
+                    // Déjà ouverte ? On la ramène au premier plan plutôt que d'en relancer une.
+                    if mode == Mode::Open {
+                        if let Some(w) = focus::find(&item) {
+                            focus::activate(w);
+                            log::log(&format!("déjà ouvert : {} → fenêtre ramenée au premier plan", item.key));
+                            return;
+                        }
+                    }
+                    if let (Mode::Reveal, Some(p)) = (mode, &item.path) {
                         let args = wide(&format!("/select,\"{p}\""));
                         ShellExecuteW(None, None, w!("explorer.exe"), PCWSTR(args.as_ptr()), None, SW_SHOWNORMAL);
                     } else {
@@ -635,6 +790,7 @@ unsafe fn perform(hwnd: HWND, act: Act) {
                     }
                 }
                 Action::ToggleAutostart => toggle_autostart(),
+                Action::Stats => stats::open(),
                 Action::Quit => {
                     let _ = DestroyWindow(hwnd);
                 }
@@ -665,6 +821,20 @@ unsafe extern "system" fn wndproc(hwnd: HWND, msg: u32, wp: WPARAM, lp: LPARAM) 
             let _ = EndPaint(hwnd, &ps);
         }
         WM_ERASEBKGND => return LRESULT(1),
+        WM_RBUTTONUP => {
+            let (x, y) = ((lp.0 & 0xFFFF) as i16 as i32, ((lp.0 >> 16) & 0xFFFF) as i16 as i32);
+            let row = with_app(|a| {
+                a.row_at(x, y).map(|i| {
+                    a.sel = i;
+                    (a.results[i].key.clone(), a.results[i].name.clone())
+                })
+            })
+            .flatten();
+            if let Some((key, name)) = row {
+                let _ = InvalidateRect(hwnd, None, false);
+                row_menu(hwnd, key, name);
+            }
+        }
         WM_KEYDOWN => {
             let act = with_app(|a| a.key_down(wp.0 as u32)).unwrap_or(Act::None);
             perform(hwnd, act);
@@ -696,6 +866,7 @@ unsafe extern "system" fn wndproc(hwnd: HWND, msg: u32, wp: WPARAM, lp: LPARAM) 
                     }
                 }
             });
+            stats::refresh_if_open();
         }
         WM_APP_ICON => {
             let vis = with_app(|a| {
@@ -709,6 +880,7 @@ unsafe extern "system" fn wndproc(hwnd: HWND, msg: u32, wp: WPARAM, lp: LPARAM) 
             if vis == Some(true) {
                 let _ = InvalidateRect(hwnd, None, false);
             }
+            stats::invalidate();
         }
         WM_APP_TRAY => match (lp.0 & 0xFFFF) as u32 {
             WM_LBUTTONUP => {
@@ -742,9 +914,27 @@ fn main() {
         let _ = SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
         let _ = CoInitializeEx(None, COINIT_APARTMENTTHREADED);
 
+        // Diagnostic : quelles apps indexées ont déjà une fenêtre ouverte ? (résultat dans wayne.log)
+        if std::env::args().any(|a| a == "--diag-focus") {
+            for line in focus::describe_windows() {
+                log::log(&format!("diag-focus fenêtre : {line}"));
+            }
+            for item in index::scan() {
+                if let Some(w) = focus::find(&item) {
+                    log::log(&format!("diag-focus : {} ({}) → fenêtre {:?}", item.name, item.key, w.0));
+                }
+            }
+            log::log("diag-focus : terminé");
+            return;
+        }
+
+        // Développement : seulement la fenêtre de statistiques, sans raccourci ni icône,
+        // à côté d'un Wayne déjà en marche ; le programme quitte quand on la ferme.
+        let preview_stats = std::env::args().any(|a| a == "--preview-stats");
+
         // Instance unique : une 2e exécution affiche simplement la fenêtre existante.
         let _mutex = CreateMutexW(None, true, w!("Local\\WayneApp.Singleton"));
-        if GetLastError() == ERROR_ALREADY_EXISTS {
+        if GetLastError() == ERROR_ALREADY_EXISTS && !preview_stats {
             if let std::result::Result::Ok(h) = FindWindowW(CLASS, None) {
                 let _ = PostMessageW(h, WM_APP_SHOW, WPARAM(0), LPARAM(0));
             }
@@ -808,6 +998,7 @@ fn main() {
             query: String::new(),
             sel: 0,
             brain: Brain::load(),
+            hidden: index::load_hidden(),
             icons: HashMap::new(),
             icon_tx,
             icon_rx,
@@ -824,6 +1015,17 @@ fn main() {
         app.set_items(index::builtins());
         app.spawn_index();
         APP.with(|a| *a.borrow_mut() = Some(app));
+
+        if preview_stats {
+            stats::PREVIEW.with(|p| p.set(true));
+            stats::open();
+            let mut msg = MSG::default();
+            while GetMessageW(&mut msg, None, 0, 0).as_bool() {
+                let _ = TranslateMessage(&msg);
+                DispatchMessageW(&msg);
+            }
+            return;
+        }
 
         TASKBAR_CREATED.with(|c| c.set(RegisterWindowMessageW(w!("TaskbarCreated"))));
         tray(hwnd, NIM_ADD);

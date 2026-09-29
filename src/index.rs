@@ -14,6 +14,7 @@ pub enum Action {
     Open(String),
     Quit,
     ToggleAutostart,
+    Stats,
 }
 
 #[derive(Clone)]
@@ -90,6 +91,9 @@ pub fn builtins() -> Vec<Item> {
     let own_icon = std::env::current_exe().ok().map(|p| p.display().to_string());
     let autostart = Item::new("cmd:autostart".into(), label.into(), sub.into(), Action::ToggleAutostart).aliases(&["startup", "demarrage", "autostart"]);
     let quit = Item::new("cmd:quit".into(), "Quitter Wayne".into(), "Commande Wayne · ferme le lanceur".into(), Action::Quit).aliases(&["quit", "exit"]);
+    let stats = Item::new("cmd:stats".into(), "Statistiques de Wayne".into(), "Commande Wayne · tes lancements, tes habitudes".into(), Action::Stats)
+        .aliases(&["stats", "statistiques"]);
+    v.push(Item { icon: own_icon.clone(), ..stats });
     v.push(Item { icon: own_icon.clone(), ..autostart });
     v.push(Item { icon: own_icon, ..quit });
     v
@@ -115,7 +119,7 @@ fn is_junk(name: &str, target: &str) -> bool {
     n.starts_with("uninstall") || n.starts_with("desinstall") || t.contains("unins0") || t.ends_with("uninstall.exe")
 }
 
-/// Énumération complète (thread d'arrière-plan). ~100–300 ms.
+/// Énumération complète (thread d'arrière-plan), de 100 à 300 ms environ.
 pub fn scan() -> Vec<Item> {
     let mut out = builtins();
     unsafe {
@@ -165,6 +169,29 @@ unsafe fn scan_apps(out: &mut Vec<Item>) -> windows::core::Result<()> {
         out.push(Item { icon: Some(shell), path: target.filter(|t| std::path::Path::new(t).exists()), ..item });
     }
     Ok(())
+}
+
+// ---- Éléments masqués (%APPDATA%\Wayne\hidden.txt, une clé par ligne) ----
+
+fn hidden_path() -> std::path::PathBuf {
+    std::env::var_os("APPDATA").map(std::path::PathBuf::from).unwrap_or_else(|| ".".into()).join("Wayne").join("hidden.txt")
+}
+
+pub fn load_hidden() -> std::collections::HashSet<String> {
+    std::fs::read_to_string(hidden_path())
+        .map(|t| t.lines().map(str::trim).filter(|l| !l.is_empty()).map(String::from).collect())
+        .unwrap_or_default()
+}
+
+pub fn save_hidden(set: &std::collections::HashSet<String>) {
+    let mut keys: Vec<&String> = set.iter().collect();
+    keys.sort();
+    let text: String = keys.iter().map(|k| format!("{k}\n")).collect();
+    let path = hidden_path();
+    if let Some(dir) = path.parent() {
+        let _ = std::fs::create_dir_all(dir);
+    }
+    let _ = std::fs::write(path, text);
 }
 
 // ---- Démarrage automatique (HKCU\…\Run) ----
