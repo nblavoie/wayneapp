@@ -1,0 +1,10 @@
+[package]
+name = "stamp"
+version = "0.1.0"
+edition = "2021"
+publish = false
+description = "Outil de build : insère icône et informations de version dans un .exe"
+
+[dependencies.windows]
+version = "0.58"
+features = ["Win32_Foundation", "Win32_System_LibraryLoader"]
