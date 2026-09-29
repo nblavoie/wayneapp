@@ -580,7 +580,7 @@ unsafe fn tray(hwnd: HWND, op: NOTIFY_ICON_MESSAGE) {
         hIcon: icon,
         ..Default::default()
     };
-    for (i, c) in "Wayne — Alt+Espace".encode_utf16().enumerate() {
+    for (i, c) in "Wayne (Alt+Espace)".encode_utf16().enumerate() {
         nid.szTip[i] = c;
     }
     let _ = Shell_NotifyIconW(op, &nid);

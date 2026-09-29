@@ -181,7 +181,7 @@ fn create_shortcut(target: &std::path::Path, lnk: &std::path::Path) -> R<()> {
             if let Some(d) = target.parent() {
                 link.SetWorkingDirectory(&h(p(d)))?;
             }
-            link.SetDescription(&h("Lanceur d'applications — Alt+Espace"))?;
+            link.SetDescription(&h("Lanceur d'applications (Alt+Espace)"))?;
             link.SetIconLocation(&h(p(target)), 0)?;
             link.cast::<IPersistFile>()?.Save(&h(p(lnk)), true)
         };

@@ -51,3 +51,7 @@ cargo build --release
 ```
 
 L'exécutable est `target\release\wayne.exe`. `--hidden` démarre sans afficher la fenêtre (utilisé par le démarrage automatique).
+
+## Licence
+
+Wayne est un logiciel libre, distribué sous licence [GNU GPL v3.0 ou ultérieure](LICENSE). Code source : https://github.com/nblavoie/wayneapp

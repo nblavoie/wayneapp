@@ -3,6 +3,7 @@ name = "stamp"
 version = "0.1.0"
 edition = "2021"
 publish = false
+license = "GPL-3.0-or-later"
 description = "Outil de build : insère icône et informations de version dans un .exe"
 
 [dependencies.windows]

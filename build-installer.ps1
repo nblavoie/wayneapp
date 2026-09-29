@@ -15,7 +15,7 @@ function Run([string]$exe, [string[]]$argv) {
 
 Run cargo @('build', '--release', '-p', 'stamp')
 Run cargo @('build', '--release', '-p', 'wayne')
-Run target\release\stamp.exe @('target\release\wayne.exe', 'assets\wayne.ico', $version, 'Wayne — lanceur d''applications', 'wayne.exe')
+Run target\release\stamp.exe @('target\release\wayne.exe', 'assets\wayne.ico', $version, 'Wayne, lanceur d''applications', 'wayne.exe')
 
 # L'installateur embarque wayne.exe (déjà estampillé) : on force sa recompilation.
 (Get-Item installer\src\main.rs).LastWriteTime = Get-Date

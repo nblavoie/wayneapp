@@ -1,3 +1,21 @@
+# Rust / Cargo
 /target
+**/target
+debug/
+**/*.rs.bk
+*.pdb
+# Cargo.lock est conservé : c'est un exécutable (builds reproductibles).
+
+# Sorties de build du projet
 /dist
+/site-out
+
+# Éditeurs
 .idea
+.vscode/
+*.swp
+
+# Système
+Thumbs.db
+desktop.ini
+.DS_Store

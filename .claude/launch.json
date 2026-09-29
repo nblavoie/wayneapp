@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "wayne-site",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["tools/serve.js", "8765"],
+      "port": 8765
+    }
+  ]
+}
+

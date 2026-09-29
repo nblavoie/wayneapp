@@ -3,6 +3,7 @@ name = "wayne-setup"
 version = "0.1.0"
 edition = "2021"
 description = "Installateur de Wayne"
+license = "GPL-3.0-or-later"
 
 [dependencies.windows]
 version = "0.58"
