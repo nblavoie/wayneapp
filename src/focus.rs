@@ -31,6 +31,12 @@ const SHARED_HOSTS: [&str; 16] = [
     "msiexec.exe", "java.exe", "javaw.exe", "python.exe", "pythonw.exe", "dllhost.exe", "control.exe", "update.exe",
 ];
 
+/// Exécutable partagé par plusieurs outils (l'icône vient alors du raccourci, pas de l'exe).
+pub fn is_shared_host(path: &str) -> bool {
+    let file = path.rsplit('\\').next().unwrap_or("").to_lowercase();
+    SHARED_HOSTS.contains(&file.as_str())
+}
+
 unsafe extern "system" fn collect(h: HWND, lp: LPARAM) -> BOOL {
     (*(lp.0 as *mut Vec<HWND>)).push(h);
     TRUE

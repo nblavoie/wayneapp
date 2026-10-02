@@ -44,6 +44,7 @@ const MENU_OPEN: usize = 1;
 const MENU_AUTOSTART: usize = 2;
 const MENU_QUIT: usize = 3;
 const MENU_STATS: usize = 4;
+const MENU_ICONS: usize = 5;
 const MENU_UNHIDE_ALL: usize = 50;
 const MENU_UNHIDE_BASE: usize = 100;
 const HOTKEY_ID: i32 = 1;
@@ -178,10 +179,27 @@ impl App {
             if let Some(src) = &it.icon {
                 if !self.icons.contains_key(&it.key) {
                     self.icons.insert(it.key.clone(), None);
-                    let _ = self.icon_tx.send((it.key.clone(), src.clone(), px));
+                    let _ = self.icon_tx.send(icons::Request::Load { key: it.key.clone(), src: src.clone(), px, exe: None });
                 }
             }
         }
+    }
+
+    /// Recharge toutes les icônes : Windows reconstruit d'abord son cache, puis les apps
+    /// classiques sont relues directement dans leur exe. Les anciennes icônes restent
+    /// affichées jusqu'à l'arrivée des nouvelles (pas de clignotement).
+    fn refresh_icons(&mut self) {
+        let _ = self.icon_tx.send(icons::Request::RebuildShellCache);
+        let px = self.px(ICON);
+        let mut n = 0;
+        for it in &self.items {
+            if let Some(src) = &it.icon {
+                let exe = it.path.as_ref().filter(|p| p.to_lowercase().ends_with(".exe") && !focus::is_shared_host(p)).cloned();
+                let _ = self.icon_tx.send(icons::Request::Load { key: it.key.clone(), src: src.clone(), px, exe });
+                n += 1;
+            }
+        }
+        log::log(&format!("rafraîchissement des icônes : {n} demandées"));
     }
 
     fn spawn_index(&mut self) {
@@ -686,6 +704,7 @@ unsafe fn tray_menu(hwnd: HWND) {
     let checked = if index::autostart_enabled() { MF_CHECKED } else { MF_UNCHECKED };
     let _ = AppendMenuW(menu, MF_STRING, MENU_OPEN, w!("Ouvrir Wayne\tAlt+Espace"));
     let _ = AppendMenuW(menu, MF_STRING, MENU_STATS, w!("Statistiques…"));
+    let _ = AppendMenuW(menu, MF_STRING, MENU_ICONS, w!("Rafraîchir les icônes"));
 
     // Sous-menu des éléments masqués : un clic réaffiche l'élément.
     let hidden: Vec<(String, String)> = with_app(|a| {
@@ -727,6 +746,9 @@ unsafe fn tray_menu(hwnd: HWND) {
     match cmd.0 as usize {
         MENU_OPEN => show(hwnd),
         MENU_STATS => stats::open(),
+        MENU_ICONS => {
+            with_app(|a| a.refresh_icons());
+        }
         MENU_AUTOSTART => toggle_autostart(),
         MENU_QUIT => {
             let _ = DestroyWindow(hwnd);
@@ -791,6 +813,9 @@ unsafe fn perform(hwnd: HWND, act: Act) {
                 }
                 Action::ToggleAutostart => toggle_autostart(),
                 Action::Stats => stats::open(),
+                Action::RefreshIcons => {
+                    with_app(|a| a.refresh_icons());
+                }
                 Action::Quit => {
                     let _ = DestroyWindow(hwnd);
                 }
@@ -913,6 +938,17 @@ fn main() {
     unsafe {
         let _ = SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
         let _ = CoInitializeEx(None, COINIT_APARTMENTTHREADED);
+
+        // Diagnostic : icône d'un exe via le cache de Windows et lue directement (résultat dans wayne.log)
+        let args: Vec<String> = std::env::args().collect();
+        if let Some(i) = args.iter().position(|a| a == "--diag-icon") {
+            if let Some(exe) = args.get(i + 1) {
+                for line in icons::diag_compare(exe, 64) {
+                    log::log(&format!("diag-icon {line}"));
+                }
+            }
+            return;
+        }
 
         // Diagnostic : quelles apps indexées ont déjà une fenêtre ouverte ? (résultat dans wayne.log)
         if std::env::args().any(|a| a == "--diag-focus") {

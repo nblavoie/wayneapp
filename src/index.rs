@@ -15,6 +15,7 @@ pub enum Action {
     Quit,
     ToggleAutostart,
     Stats,
+    RefreshIcons,
 }
 
 #[derive(Clone)]
@@ -94,6 +95,9 @@ pub fn builtins() -> Vec<Item> {
     let stats = Item::new("cmd:stats".into(), "Statistiques de Wayne".into(), "Commande Wayne · tes lancements, tes habitudes".into(), Action::Stats)
         .aliases(&["stats", "statistiques"]);
     v.push(Item { icon: own_icon.clone(), ..stats });
+    let icons = Item::new("cmd:icons".into(), "Rafraîchir les icônes".into(), "Commande Wayne · recharge les icônes des applications mises à jour".into(), Action::RefreshIcons)
+        .aliases(&["icones", "icons", "refresh", "rafraichir"]);
+    v.push(Item { icon: own_icon.clone(), ..icons });
     v.push(Item { icon: own_icon.clone(), ..autostart });
     v.push(Item { icon: own_icon, ..quit });
     v

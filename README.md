@@ -26,7 +26,9 @@ Rust + Win32 natif (GDI/GDI+), sans framework ni WebView : un seul exécutable d
 
 ## Zone de notification
 
-L'icône **W** de la zone de notification : clic gauche pour ouvrir ou fermer Wayne, clic droit pour le menu (Ouvrir, Statistiques, Lancer au démarrage de Windows, Quitter).
+L'icône **W** de la zone de notification : clic gauche pour ouvrir ou fermer Wayne, clic droit pour le menu (Ouvrir, Statistiques, Rafraîchir les icônes, Applications masquées, Lancer au démarrage de Windows, Quitter).
+
+**Rafraîchir les icônes** (menu de l'icône, ou tape « icônes » dans Wayne) : après la mise à jour d'une app dont l'icône a changé. Windows reconstruit son cache d'icônes (`ie4uinit -show`), puis Wayne relit les icônes, celles des apps classiques directement dans leur exe.
 
 **Statistiques** (menu de l'icône, ou tape « stats » dans Wayne) : lancements au total, aujourd'hui, moyenne par jour, apps les plus lancées, activité par heure, par jour de la semaine et sur 30 jours, derniers lancements, et ce que Wayne a appris (« c » → Outil Capture d'écran). Survole une barre pour voir sa valeur. Windows 11 range les nouvelles icônes dans le menu caché (^) : glisse-la dans la barre pour la garder visible.
 
